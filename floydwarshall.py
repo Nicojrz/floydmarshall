@@ -1,9 +1,8 @@
 import math
 
-# ---------------------------------------------------
-# Crear matriz de adyacencia desde archivo
-# ---------------------------------------------------
-def leer_grafo_matriz(nombre_archivo):
+INF = float('inf')
+
+def leer_grafo_matriz_no_dirigido(nombre_archivo):
     vertices = set()
     aristas = []
 
@@ -19,39 +18,33 @@ def leer_grafo_matriz(nombre_archivo):
     n = len(vertices)
     indice = {v: i for i, v in enumerate(vertices)}
 
-    # Inicializar matriz de adyacencia
-    matriz = [[math.inf] * n for _ in range(n)]
+    matriz = [[INF] * n for _ in range(n)]
     for i in range(n):
         matriz[i][i] = 0
 
     for u, v, w in aristas:
         i, j = indice[u], indice[v]
         matriz[i][j] = w
+        matriz[j][i] = w
 
     return matriz, vertices, indice
 
 def imprimir_matriz(matriz, vertices):
-    print("Matriz de adyacencia:")
+    print("\nMatriz de adyacencia:")
     print("    ", end="")
-
-    # Encabezado de columnas
     for v in vertices:
         print(f"{v:>4}", end="")
     print()
 
-    # Filas
     for i, fila in enumerate(matriz):
         print(f"{vertices[i]:>4}", end="")
-        for valor in fila:
-            if valor == float('inf'):
-                print(f"{'-':>4}", end="")
+        for val in fila:
+            if val == INF:
+                print(f"{'∞':>4}", end="")
             else:
-                print(f"{valor:>4}", end="")
+                print(f"{val:>4}", end="")
         print()
 
-# ---------------------------------------------------
-# Floyd-Warshall con matriz de adyacencia
-# ---------------------------------------------------
 def floyd_warshall(matriz):
     n = len(matriz)
     dist = [fila[:] for fila in matriz]
@@ -59,10 +52,9 @@ def floyd_warshall(matriz):
     next_node = [[None] * n for _ in range(n)]
     for i in range(n):
         for j in range(n):
-            if matriz[i][j] != math.inf and i != j:
+            if matriz[i][j] != INF and i != j:
                 next_node[i][j] = j
 
-    # Programación dinámica
     for k in range(n):
         for i in range(n):
             for j in range(n):
@@ -72,10 +64,6 @@ def floyd_warshall(matriz):
 
     return dist, next_node
 
-
-# ---------------------------------------------------
-# Reconstrucción del camino (origen -> destino)
-# ---------------------------------------------------
 def reconstruir_camino(origen, destino, next_node, indice, vertices):
     i = indice[origen]
     j = indice[destino]
@@ -90,30 +78,44 @@ def reconstruir_camino(origen, destino, next_node, indice, vertices):
 
     return camino
 
-
-# ---------------------------------------------------
-# Función para ejecutar consulta intercambiable
-# ---------------------------------------------------
 def camino_mas_corto(origen, destino, dist, next_node, indice, vertices):
+    if origen == destino:
+        print("\nOrigen y destino son el mismo vértice.")
+        print("Ruta:", origen)
+        print("Costo: 0")
+        return
+
+    if origen not in indice or destino not in indice:
+        print("\nError: vértice no existente en el grafo.")
+        return
+
     camino = reconstruir_camino(origen, destino, next_node, indice, vertices)
     costo = dist[indice[origen]][indice[destino]]
 
-    if camino is None:
-        print("No existe camino entre", origen, "y", destino)
+    if camino is None or costo == INF:
+        print(f"\nNo existe camino entre {origen} y {destino}")
     else:
-        print(f"Ruta más corta de {origen} a {destino}:")
+        print(f"\nRuta más corta de {origen} a {destino}:")
         print(" -> ".join(camino))
         print("Costo:", costo)
 
+def main():
+    archivo = input("Nombre del archivo del grafo: ")
 
-# ---------------------------------------------------
-# Programa principal
-# ---------------------------------------------------
-matriz, vertices, indice = leer_grafo_matriz("grafo.txt")
-imprimir_matriz(matriz, vertices)
-dist, next_node = floyd_warshall(matriz)
+    try:
+        matriz, vertices, indice = leer_grafo_matriz_no_dirigido(archivo)
+    except FileNotFoundError:
+        print("Error: archivo no encontrado.")
+        return
 
-# Se puede intercambiar libremente
-camino_mas_corto("A", "E", dist, next_node, indice, vertices)
-print()
-camino_mas_corto("E", "A", dist, next_node, indice, vertices)
+    imprimir_matriz(matriz, vertices)
+
+    dist, next_node = floyd_warshall(matriz)
+
+    origen = input("\nVértice origen: ").strip()
+    destino = input("Vértice destino: ").strip()
+
+    camino_mas_corto(origen, destino, dist, next_node, indice, vertices)
+
+if __name__ == "__main__":
+    main()
