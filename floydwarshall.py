@@ -1,121 +1,111 @@
-import math
-
 INF = float('inf')
 
-def leer_grafo_matriz_no_dirigido(nombre_archivo):
-    vertices = set()
-    aristas = []
+def leer_matriz_W(nombre_archivo):
+    matriz = []
 
-    with open(nombre_archivo, "r") as f:
-        for linea in f:
-            u, v, w = linea.split()
-            w = int(w)
-            vertices.add(u)
-            vertices.add(v)
-            aristas.append((u, v, w))
+    with open(nombre_archivo, "r") as archivo:
+        for linea in archivo:
+            fila = []
+            elementos = linea.split()
 
-    vertices = sorted(vertices)
-    n = len(vertices)
-    indice = {v: i for i, v in enumerate(vertices)}
+            for valor in elementos:
+                if valor.upper() == "INF":
+                    fila.append(INF)
+                else:
+                    fila.append(int(valor))
 
-    matriz = [[INF] * n for _ in range(n)]
-    for i in range(n):
-        matriz[i][i] = 0
+            matriz.append(fila)
 
-    for u, v, w in aristas:
-        i, j = indice[u], indice[v]
-        matriz[i][j] = w
-        matriz[j][i] = w
+    return matriz
 
-    return matriz, vertices, indice
-
-def imprimir_matriz(matriz, vertices):
-    print("\nMatriz de adyacencia:")
-    print("    ", end="")
-    for v in vertices:
-        print(f"{v:>4}", end="")
-    print()
-
-    for i, fila in enumerate(matriz):
-        print(f"{vertices[i]:>4}", end="")
-        for val in fila:
-            if val == INF:
-                print(f"{'∞':>4}", end="")
+# ---------------------------------------------------
+def imprimir_matriz(matriz, titulo):
+    print("\n" + titulo)
+    for fila in matriz:
+        for valor in fila:
+            if valor == INF:
+                print(f"{'∞':>4}", end=" ")
             else:
-                print(f"{val:>4}", end="")
+                print(f"{valor:>4}", end=" ")
         print()
 
-def floyd_warshall(matriz):
-    n = len(matriz)
-    dist = [fila[:] for fila in matriz]
 
-    next_node = [[None] * n for _ in range(n)]
+# ---------------------------------------------------
+def floyd_warshall(W):
+    n = len(W)
+
+    dist = [[INF for _ in range(n)] for _ in range(n)]
+    succ = [[-1 for _ in range(n)] for _ in range(n)]
+
     for i in range(n):
         for j in range(n):
-            if matriz[i][j] != INF and i != j:
-                next_node[i][j] = j
+            dist[i][j] = W[i][j]
 
+            if W[i][j] != INF and i != j:
+                succ[i][j] = j
+
+        dist[i][i] = 0
+        succ[i][i] = i
+        
     for k in range(n):
         for i in range(n):
             for j in range(n):
                 if dist[i][k] + dist[k][j] < dist[i][j]:
                     dist[i][j] = dist[i][k] + dist[k][j]
-                    next_node[i][j] = next_node[i][k]
+                    succ[i][j] = succ[i][k]
 
-    return dist, next_node
+    return dist, succ
 
-def reconstruir_camino(origen, destino, next_node, indice, vertices):
-    i = indice[origen]
-    j = indice[destino]
 
-    if next_node[i][j] is None:
-        return None
+# ---------------------------------------------------
+def construir_camino(succ, origen, destino):
+    if succ[origen][destino] == -1:
+        return []
 
-    camino = [origen]
-    while i != j:
-        i = next_node[i][j]
-        camino.append(vertices[i])
+    camino = []
+    actual = origen
 
+    while actual != destino:
+        camino.append(actual)
+        actual = succ[actual][destino]
+
+    camino.append(destino)
     return camino
 
-def camino_mas_corto(origen, destino, dist, next_node, indice, vertices):
-    if origen == destino:
-        print("\nOrigen y destino son el mismo vértice.")
-        print("Ruta:", origen)
-        print("Costo: 0")
+# ---------------------------------------------------
+def imprimir_camino(camino):
+    if not camino:
+        print("No existe camino entre los vértices.")
         return
 
-    if origen not in indice or destino not in indice:
-        print("\nError: vértice no existente en el grafo.")
-        return
+    print("Camino más corto:")
+    for i in range(len(camino)):
+        if i != len(camino) - 1:
+            print(camino[i], "->", end=" ")
+        else:
+            print(camino[i])
 
-    camino = reconstruir_camino(origen, destino, next_node, indice, vertices)
-    costo = dist[indice[origen]][indice[destino]]
-
-    if camino is None or costo == INF:
-        print(f"\nNo existe camino entre {origen} y {destino}")
-    else:
-        print(f"\nRuta más corta de {origen} a {destino}:")
-        print(" -> ".join(camino))
-        print("Costo:", costo)
-
+# main ---------------------------------------------------
 def main():
-    archivo = input("Nombre del archivo del grafo: ")
+    nombre_archivo = input("Nombre del archivo con la matriz W: ")
 
-    try:
-        matriz, vertices, indice = leer_grafo_matriz_no_dirigido(archivo)
-    except FileNotFoundError:
-        print("Error: archivo no encontrado.")
-        return
+    W = leer_matriz_W(nombre_archivo)
 
-    imprimir_matriz(matriz, vertices)
+    imprimir_matriz(W, "Matriz de adyacencia W:")
 
-    dist, next_node = floyd_warshall(matriz)
+    dist, succ = floyd_warshall(W)
 
-    origen = input("\nVértice origen: ").strip()
-    destino = input("Vértice destino: ").strip()
+    imprimir_matriz(dist, "Matriz de distancias mínimas:")
+    imprimir_matriz(succ, "Matriz de sucesores:")
 
-    camino_mas_corto(origen, destino, dist, next_node, indice, vertices)
+    origen = int(input("\nVértice origen (índice): "))
+    destino = int(input("Vértice destino (índice): "))
+
+    camino = construir_camino(succ, origen, destino)
+    imprimir_camino(camino)
+
+    if camino:
+        print("Costo total:", dist[origen][destino])
 
 if __name__ == "__main__":
     main()
